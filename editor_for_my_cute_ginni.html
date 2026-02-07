@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>This is only for you ginni 🥰😘</title>
+
+    <!-- Ace Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ext-language_tools.min.js"></script>
+
+    <!-- Skulpt -->
+    <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+
+    <style>
+        :root {
+            --bg: #0d0f14;
+            --panel: #161922;
+            --accent: #00ff9d;
+            --btn-red: #ff4757;
+            --text: #e0e0e0;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: var(--panel);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2d313d;
+        }
+
+        .brand {
+            color: var(--accent);
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+
+        #run-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 20px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .toolbar {
+            display: flex;
+            background: #1c1f2b;
+            padding: 8px 12px;
+            gap: 15px;
+            overflow-x: auto;
+            border-bottom: 1px solid #2d313d;
+        }
+
+        .tool-link {
+            color: #888;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        #editor-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #editor {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* TERMINAL OVERLAY */
+        #output-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .output-header {
+            background: #161922;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        #output-text {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #f1f1f1;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .close-btn {
+            background: var(--btn-red);
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        /* INLINE INPUT STYLING */
+        .terminal-input {
+            background: transparent;
+            color: var(--accent);
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: inherit;
+            width: auto;
+            min-width: 10px;
+            padding: 0;
+            margin: 0;
+            border-bottom: 1px solid #555;
+        }
+
+        .text-error {
+            color: #ff4757;
+        }
+        
+        .text-success {
+            color: #00ff9d;
+            font-style: italic;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="brand">This is only for you ginni 🥰😘.</div>
+        <div class="controls">
+            <button id="run-btn" onclick="runPython()">RUN</button>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <span class="tool-link" onclick="insertSymbol('&#39;')">' '</span>
+        <span class="tool-link" onclick="insertSymbol('&quot;')">" "</span>
+        <span class="tool-link" onclick="insertSymbol(':')">:</span>
+        <span class="tool-link" onclick="insertSymbol('(')">( )</span>
+        <span class="tool-link" onclick="insertSymbol('\t')">TAB</span>
+        <span class="tool-link" onclick="clearAll()">Clear</span>
+
+    </div>
+
+    <div id="editor-container">
+        <div id="editor"></div>
+    </div>
+
+    <!-- TERMINAL -->
+    <div id="output-screen">
+        <div class="output-header">
+            <span style="color: var(--accent)">● Python Console</span>
+            <button class="close-btn" onclick="closeOutput()">STOP / CLOSE</button>
+        </div>
+        <pre id="output-text"></pre>
+    </div>
+
+    <script>
+        const editor = ace.edit("editor");
+        ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/');
+
+        editor.setOptions({
+            theme: "ace/theme/dracula",
+            mode: "ace/mode/python",
+            fontSize: "16px",
+            enableLiveAutocompletion: true,
+            enableBasicAutocompletion: true,
+            useSoftTabs: true,
+            tabSize: 4,
+            wrap: true
+        });
+
+        // Load saved code
+        const demoCode = `name = input("Enter your name: ")\nprint(f"Hello {name}!")\n\n# This loop won't freeze the browser\nfor i in range(5):\n    print(f"Counting: {i}")`;
+        editor.setValue(localStorage.getItem('saved_code') || demoCode, 1);
+        editor.on('change', () => {
+            localStorage.setItem('saved_code', editor.getValue());
+            editor.getSession().clearAnnotations();
+        });
+
+        function outf(text) {
+            const outArea = document.getElementById("output-text");
+            outArea.innerText += text;
+            outArea.scrollTop = outArea.scrollHeight;
+        }
+
+        function builtinRead(x) {
+            if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+                throw "File not found: '" + x + "'";
+            return Sk.builtinFiles["files"][x];
+        }
+
+        // --- PRO INPUT HANDLER ---
+        function inputHandler(promptText) {
+            return new Promise((resolve) => {
+                const outArea = document.getElementById("output-text");
+
+                // 1. Show the prompt text
+                outArea.innerText += promptText;
+                
+                // Scroll to bottom so user sees the input
+                outArea.scrollTop = outArea.scrollHeight;
+
+                // 2. Create an editable span or input
+                const inputEl = document.createElement("input");
+                inputEl.className = "terminal-input";
+                inputEl.setAttribute("autocomplete", "off");
+                outArea.appendChild(inputEl);
+                inputEl.focus();
+
+                // 3. Handle Enter key
+                inputEl.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        const val = inputEl.value;
+                        inputEl.remove(); // Remove the input box
+                        outArea.innerText += val + "\n"; // Show the entered text permanently
+                        resolve(val);
+                    }
+                });
+
+                // Stay focused on input if user clicks the terminal
+                outArea.onclick = () => {
+                    if(document.body.contains(inputEl)) inputEl.focus();
+                };
+            });
+        }
+
+        function runPython() {
+            const code = editor.getValue();
+            const outputScreen = document.getElementById("output-screen");
+            const outputText = document.getElementById("output-text");
+
+            outputText.innerText = "";
+            outputText.classList.remove("text-error");
+            outputScreen.style.display = "flex";
+            editor.getSession().clearAnnotations();
+
+            // CONFIGURE SKULPT
+            Sk.configure({
+                output: outf,
+                read: builtinRead,
+                inputfun: inputHandler,
+                inputfunTakesPrompt: true,
+                __future__: Sk.python3,
+                yieldLimit: 100,
+                execLimit: 1000000
+            });
+
+            // Run asynchronously
+            const myPromise = Sk.misceval.asyncToPromise(function () {
+                return Sk.importMainWithBody("<stdin>", false, code, true);
+            });
+
+            myPromise.then(
+                () => {
+                    // --- SUCCESS HANDLER ---
+                    // This is where we print the finished message to the SCREEN (not console log)
+                    const outArea = document.getElementById("output-text");
+                    outArea.innerHTML += '<br><span class="text-success"> <br>=== Program Execution Finished ===</span>';
+                    outArea.scrollTop = outArea.scrollHeight;
+                },
+                (err) => {
+                    // --- ERROR HANDLER ---
+                    outputText.classList.add("text-error");
+                    outputText.innerText += "\n" + err.toString();
+
+                    let line = err.traceback ? err.traceback[0].lineno : (err.lineno || 0);
+                    if (line > 0) {
+                        editor.getSession().setAnnotations([{
+                            row: line - 1, column: 0, text: err.toString(), type: "error"
+                        }]);
+                        editor.gotoLine(line);
+                    }
+                }
+            );
+        }
+
+        function closeOutput() {
+            document.getElementById("output-screen").style.display = "none";
+        }
+
+        function insertSymbol(sym) {
+            editor.insert(sym);
+            editor.focus();
+        }
+
+        function clearAll() { if (confirm("Clear code?")) editor.setValue("", -1); }
+        window.addEventListener('resize', () => editor.resize());
+    </script>
+</body>
+
+</html>
